@@ -17,7 +17,7 @@ namespace mnDAL.Tests
         {
             m_Connection = new SqlConnection(
                 "Data Source=.\\SQLEXPRESS;" +
-                "AttachDbFilename=\"C:\\Documents and Settings\\Greg\\My Documents\\mnDAL.mdf\";" +
+                "AttachDbFilename=\"db\\mnDAL.mdf\";" +
                 "Integrated Security=True;" +
                 "User Instance=True");
             m_Connection.Open();
