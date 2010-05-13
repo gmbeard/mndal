@@ -1,0 +1,6 @@
+C:\Documents and Settings\Greg\My Documents\Visual Studio 2008\Projects\mnDAL\mnDAL\obj\Release\ResolveAssemblyReference.cache
+C:\Documents and Settings\Greg\My Documents\Visual Studio 2008\Projects\mnDAL\mnDAL\bin\Release\mnDAL.dll
+C:\Documents and Settings\Greg\My Documents\Visual Studio 2008\Projects\mnDAL\mnDAL\bin\Release\mnDAL.pdb
+C:\Documents and Settings\Greg\My Documents\Visual Studio 2008\Projects\mnDAL\mnDAL\obj\Release\mnDAL.dll
+C:\Documents and Settings\Greg\My Documents\Visual Studio 2008\Projects\mnDAL\mnDAL\obj\Release\mnDAL.pdb
+C:\Documents and Settings\Greg\My Documents\Visual Studio 2008\Projects\mnDAL\mnDAL\bin\Release\nunit.framework.dll
