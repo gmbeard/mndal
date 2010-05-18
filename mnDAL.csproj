@@ -57,15 +57,18 @@
     <Compile Include="src\adapters.cs" />
     <Compile Include="src\entitybase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="src\EntityDbField.cs" />
+    <Compile Include="src\entitytype.cs" />
+    <Compile Include="src\expressions.cs" />
+    <Compile Include="src\Join.cs" />
     <Compile Include="tests\database tests.cs" />
     <Compile Include="tests\entity classes\CheeseEntity.cs" />
+    <Compile Include="tests\entity classes\CountryEntity.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="db\mnDAL.mdf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="db\mnDAL_log.ldf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <DependentUpon>mnDAL.mdf</DependentUpon>
     </Content>
     <Content Include="lib\nunit.framework.dll" />
