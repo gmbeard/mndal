@@ -7,17 +7,21 @@ namespace mnDAL.Tests
 {
     public class CheeseEntity : EntityBase
     {
+        public static EntityType EntityType = new EntityType("dbo.Cheese");
+
         public static class CheeseEntityFields
         {
-            public static EntityDbField CheeseID = new EntityDbField("CheeseID", SqlDbType.Int, true);
-            public static EntityDbField Name = new EntityDbField("[Name]", SqlDbType.NVarChar, 50);
+            public static EntityDbField CheeseID = new EntityDbField("CheeseID", SqlDbType.Int, true, EntityType);
+            public static EntityDbField Name = new EntityDbField("[Name]", SqlDbType.NVarChar, 50, EntityType);
+            public static EntityDbField CountryID = new EntityDbField("CountryID", SqlDbType.Int, EntityType);
         }
 
         private int m_CheeseID;
         private string m_Name;
+        private int? m_CountryID;
 
         public CheeseEntity()
-            : base("dbo.Cheese")
+            : base(EntityType.EntityName)
         {
             Init();
         }
@@ -26,6 +30,7 @@ namespace mnDAL.Tests
         {
             AddFieldMapping(CheeseEntityFields.CheeseID, "m_CheeseID");
             AddFieldMapping(CheeseEntityFields.Name, "m_Name");
+            AddFieldMapping(CheeseEntityFields.CountryID, "m_CountryID");
         }
 
         public override EntityDbField GetIdentifierDbField()
@@ -44,8 +49,18 @@ namespace mnDAL.Tests
             get { return m_Name; }
             set
             {
-                SetFieldModified(CheeseEntityFields.Name, GetDbFieldValueChanged(CheeseEntityFields.Name) | value != m_Name);
+                SetFieldModified(CheeseEntityFields.Name, GetDbFieldValueChanged(CheeseEntityFields.Name) || value != m_Name);
                 m_Name = value;
+            }
+        }
+
+        public int? CountryID
+        {
+            get { return m_CountryID; }
+            set
+            {
+                SetFieldModified(CheeseEntityFields.CountryID, GetDbFieldValueChanged(CheeseEntityFields.CountryID) || value != m_CountryID);
+                m_CountryID = value;
             }
         }
     }

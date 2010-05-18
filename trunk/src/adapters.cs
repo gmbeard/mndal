@@ -15,6 +15,7 @@ namespace mnDAL.Database
         private readonly Expression      m_Expr;
         private readonly SortExpression  m_Sort;
         private readonly int             m_Top;
+        private Join m_Join;
 
         public EntityFetcher() 
         {
@@ -97,6 +98,12 @@ namespace mnDAL.Database
             m_Top = max;
         }
 
+        public EntityFetcher<T> AddJoinPath(Join join)
+        {
+            m_Join = join;
+            return this;
+        }
+
         internal SqlCommand GetSelectCommand() {
 
             SqlCommand cmd = new SqlCommand();
@@ -115,6 +122,8 @@ namespace mnDAL.Database
             }
 
             for(int i = 0; i < fields.Length; ++i) {
+                qry.Append(fields[i].EntityType.EntityName);
+                qry.Append(".");
                 qry.Append(fields[i].DbName);
 
                 if(i < (fields.Length - 1)) {
@@ -123,7 +132,12 @@ namespace mnDAL.Database
             }
 
             qry.Append(" FROM ");
-            qry.Append(ent.EntityDbName);
+            qry.Append(ent.GetDbType());
+
+            if (null != m_Join)
+            {
+                qry.Append(m_Join);
+            }
 
             if(null != m_Expr) {
                 qry.Append(" WHERE ");
@@ -237,7 +251,7 @@ namespace mnDAL.Database
 
             StringBuilder cmdText = new StringBuilder();
             cmdText.Append("UPDATE ");
-            cmdText.Append(Entity.EntityDbName);
+            cmdText.Append(Entity.GetDbType());
             cmdText.Append(" SET ");
 
             for(int i = 0; i < updatedFields.Count; ++i) {
@@ -279,7 +293,7 @@ namespace mnDAL.Database
 
             // Build SQL
             cmdTxt.Append("INSERT INTO ");
-            cmdTxt.Append(Entity.EntityDbName);
+            cmdTxt.Append(Entity.GetDbType());
             cmdTxt.Append(" (");
 
             //  Build SQL field list
@@ -378,12 +392,12 @@ namespace mnDAL.Database
                 identifier = Entity.GetIdentifierDbField();
                 if(null == (object)identifier)
                 {
-                    throw new ApplicationException("'" + Entity.EntityDbName + "' doesn't implement an unique field");
+                    throw new ApplicationException("'" + Entity.GetDbType() + "' doesn't implement an unique field");
                 }
             }
             catch(Exception e)
             {
-                throw new ApplicationException("Couldn't delete '" + Entity.EntityDbName + "'. Check inner exception", e);
+                throw new ApplicationException("Couldn't delete '" + Entity.GetDbType() + "'. Check inner exception", e);
             }
 
             SqlCommand      cmd = new SqlCommand();
@@ -391,7 +405,7 @@ namespace mnDAL.Database
             cmd.CommandType = CommandType.Text;
 
             StringBuilder   sql = new StringBuilder("DELETE FROM ");
-            sql.Append(Entity.EntityDbName);
+            sql.Append(Entity.GetDbType());
             sql.Append(" WHERE ");
 
             Expression exp = (Entity.GetIdentifierDbField() == Entity.GetValueForDbField(identifier));
