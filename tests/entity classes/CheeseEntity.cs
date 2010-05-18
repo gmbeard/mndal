@@ -14,11 +14,13 @@ namespace mnDAL.Tests
             public static EntityDbField CheeseID = new EntityDbField("CheeseID", SqlDbType.Int, true, EntityType);
             public static EntityDbField Name = new EntityDbField("[Name]", SqlDbType.NVarChar, 50, EntityType);
             public static EntityDbField CountryID = new EntityDbField("CountryID", SqlDbType.Int, EntityType);
+            public static EntityDbField ComesFromAnimalID = new EntityDbField("ComesFromAnimalID", SqlDbType.Int, EntityType);
         }
 
         private int m_CheeseID;
         private string m_Name;
         private int? m_CountryID;
+        private int? m_ComesFromAnimalID;
 
         public CheeseEntity()
             : base(EntityType.EntityName)
@@ -31,6 +33,7 @@ namespace mnDAL.Tests
             AddFieldMapping(CheeseEntityFields.CheeseID, "m_CheeseID");
             AddFieldMapping(CheeseEntityFields.Name, "m_Name");
             AddFieldMapping(CheeseEntityFields.CountryID, "m_CountryID");
+            AddFieldMapping(CheeseEntityFields.ComesFromAnimalID, "m_ComesFromAnimalID");
         }
 
         public override EntityDbField GetIdentifierDbField()
@@ -61,6 +64,16 @@ namespace mnDAL.Tests
             {
                 SetFieldModified(CheeseEntityFields.CountryID, GetDbFieldValueChanged(CheeseEntityFields.CountryID) || value != m_CountryID);
                 m_CountryID = value;
+            }
+        }
+
+        public int? ComesFromAnimalID
+        {
+            get { return m_ComesFromAnimalID; }
+            set
+            {
+                SetFieldModified(CheeseEntityFields.ComesFromAnimalID, GetDbFieldValueChanged(CheeseEntityFields.ComesFromAnimalID) || value != m_ComesFromAnimalID);
+                m_ComesFromAnimalID = value;
             }
         }
     }

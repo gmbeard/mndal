@@ -14,7 +14,6 @@ namespace mnDAL
     [Serializable]
     public class Join
     {
-        private readonly EntityType m_JoinTo;
         private readonly EntityDbField m_FieldA;
         private readonly EntityDbField m_FieldB;
         private readonly JoinType m_JoinType;
