@@ -100,8 +100,25 @@ namespace mnDAL.Database
 
         public EntityFetcher<T> AddJoinPath(Join join)
         {
-            m_Join = join;
+            if(null == m_Join)
+            {
+                m_Join = join;
+            }
+            else
+            {
+                m_Join.AddSubJoin(join);
+            }
             return this;
+        }
+
+        public EntityFetcher<T> AddJoinPath(EntityDbField fieldA, JoinType joinType, EntityDbField fieldB)
+        {
+            return AddJoinPath(new Join(fieldA, fieldB, joinType));
+        }
+
+        public EntityFetcher<T> AddJoinPath(EntityDbField fieldA, EntityDbField fieldB)
+        {
+            return AddJoinPath(new Join(fieldA, fieldB, JoinType.Inner));
         }
 
         internal SqlCommand GetSelectCommand() {
@@ -276,10 +293,22 @@ namespace mnDAL.Database
             cmd.CommandText = cmdText.ToString();
 
             foreach(EntityDbField field in updatedFields) {
-                cmd.Parameters.Add("@" + field.DbName, field.DbType, field.DbLength).Value = Entity.GetValueForDbField(field);
+                SqlParameter param = cmd.Parameters.Add("@" + field.DbName, field.DbType, field.DbLength);
+                param.Value = Entity.GetValueForDbField(field);
+
+                switch(field.DbType) {
+                    case SqlDbType.Image:
+                    case SqlDbType.VarBinary:
+                    case SqlDbType.Binary:
+                        if(null != (param.Value as byte[])) {
+                            param.Size = Buffer.ByteLength((byte[])param.Value);
+                        }
+                        break;
+                }
             }
 
             cmd.Parameters.Add("@" + idFld.DbName, idFld.DbType, idFld.DbLength).Value = Entity.GetValueForDbField(idFld);
+
 
             return cmd;
         }
@@ -340,15 +369,23 @@ namespace mnDAL.Database
             for(int i = 0; i < Fields.Length; ++i) 
             {
                 SqlParameter param = cmd.Parameters.Add("@expr" + i.ToString(), Fields[i].DbType, Fields[i].DbLength);
-                //if(Fields[i].IsAutoIncrement) {
-                //    param.Direction = ParameterDirection.Output;
-                //}
-                //else {
+
                 param.Value = Entity.GetValueForDbField(Fields[i]);
                 if(null == param.Value) {
                     param.Value = DBNull.Value;
                 }
-                //}
+                else {
+                    switch(Fields[i].DbType) {
+
+                        case SqlDbType.Image:
+                        case SqlDbType.VarBinary:
+                        case SqlDbType.Binary:
+                            if(null != (param.Value as byte[])) {
+                                param.Size = Buffer.ByteLength((byte[])param.Value);
+                            }
+                            break;
+                    }
+                }
             }
 
             if (null != ((object)(AutoIncrementField)))
@@ -464,7 +501,7 @@ namespace mnDAL.Database
 
         public DatabaseAdapter() {
             m_Connection = new SqlConnection(
-                "Server=DEV-DBS\\SQL_SERVER_2005;Database=CRM;Trusted_Connection=true");
+                "Server=UNIVERSAL_DBS\\SQL_SERVER_2005;Database=CRM;Trusted_Connection=true");
             m_OwnsConnection = true;
         }
 
@@ -640,6 +677,55 @@ namespace mnDAL.Database
             }
 
             entity = update.Entity;
+        }
+
+        public DynamicEntity[] Execute(String procName, Object[] paramValues) {
+
+            List<DynamicEntity> results = new List<DynamicEntity>();
+
+            using(SqlCommand cmd = new SqlCommand(procName, m_Connection)) {
+
+                cmd.CommandType = CommandType.StoredProcedure;
+                
+                if(m_Connection.State == ConnectionState.Closed) {
+                    m_Connection.Open();
+                }
+
+                cmd.Prepare();
+
+                if(null != paramValues) {
+                    Array.ForEach(
+                        paramValues,
+                        delegate(Object item) {
+                            SqlParameter param = new SqlParameter();
+                            param.Value = item == null ? DBNull.Value : item;
+                            cmd.Parameters.Add(param);
+                        });
+                }
+
+                using(SqlDataReader reader = cmd.ExecuteReader(m_OwnsConnection ? CommandBehavior.CloseConnection : CommandBehavior.Default)) {
+
+                    EntityDbField[] fields = new EntityDbField[reader.FieldCount];
+                    for(int i = 0; i < reader.FieldCount; ++i) {
+                        fields[i] = new EntityDbField(
+                            reader.GetName(i),
+                            SqlDbType.Variant,
+                            null);
+                    }
+
+                    while(reader.Read()) {
+                        DynamicEntity entity = new DynamicEntity(fields);
+                        for(int i = 0; i < reader.FieldCount; ++i) {
+                            entity.SetValueForDbField(fields[i], reader.GetValue(i));
+                        }
+                        results.Add(entity);
+                    }
+
+                    reader.Close();
+                }
+            }
+
+            return results.ToArray();
         }
     }
 }

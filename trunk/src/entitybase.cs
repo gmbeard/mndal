@@ -3,11 +3,16 @@ using System.Collections.Generic;
 using System.Text;
 using System.Data;
 using System.Reflection;
+using System.Xml.Serialization;
+using System.Xml;
+using System.IO;
 
 namespace mnDAL
 {
     [Serializable]
-    public class EntityFieldMapping : IComparable<EntityDbField>, IComparable<EntityFieldMapping> {
+    public class EntityFieldMapping : 
+        IComparable<EntityDbField>, 
+        IComparable<EntityFieldMapping> {
 
         private EntityDbField   m_DbField;
         private FieldInfo       m_EntityField;
@@ -46,7 +51,7 @@ namespace mnDAL
     }
 
     [Serializable]
-    public abstract class EntityBase {
+    public abstract class EntityBase : IXmlSerializable {
 
         private List<EntityFieldMapping>    m_FieldMap;
         private List<EntityDbField>         m_ModifiedFields;
@@ -138,9 +143,86 @@ namespace mnDAL
 
         public abstract EntityDbField GetIdentifierDbField();
 
-        public virtual EntityType GetDbType()
-        {
+        public virtual EntityType GetDbType() {
             return m_DbType;
+        }
+
+        public System.Xml.Schema.XmlSchema GetSchema() {
+            return null;
+        }
+
+        public void ReadXml(System.Xml.XmlReader r) {
+            
+            using(XmlReader reader = r.ReadSubtree()) {
+
+                if(reader.Read()) {
+                    while(reader.Read()) {
+                        if(reader.NodeType == System.Xml.XmlNodeType.Element && !reader.IsEmptyElement) {
+                            EntityDbField field = new EntityDbField(
+                                XmlConvert.EncodeLocalName(reader.LocalName),
+                                (SqlDbType)Enum.Parse(typeof(SqlDbType), reader["dbType"]),
+                                Int32.Parse(reader["length"]),
+                                GetDbType());
+
+                            int pos;
+                            if( (pos = m_FieldMap.BinarySearch(new EntityFieldMapping(field))) >= 0 ) {
+                                if(m_FieldMap[pos].EntityField.FieldType == typeof(Byte[])) {
+                                    using(MemoryStream ms = new MemoryStream()) {
+                                        Byte[] buffer = new Byte[1024];
+                                        int read = 0;
+                                        while( (read = reader.ReadElementContentAsBase64(buffer, 0, 1024)) > 0) {
+                                            ms.Write(buffer, 0, read);
+                                        }
+
+                                        m_FieldMap[pos].EntityField.SetValue(this, ms.ToArray());
+                                        ms.Close();
+                                    }
+                                }
+                                else if(m_FieldMap[pos].EntityField.FieldType.IsGenericType && m_FieldMap[pos].EntityField.FieldType.GetGenericTypeDefinition() == typeof(Nullable<>)) {
+                                    if(m_FieldMap[pos].EntityField.FieldType.GetGenericArguments()[0] == typeof(Guid)) {
+                                        m_FieldMap[pos].EntityField.SetValue(this, new Guid(reader.ReadElementContentAsString()));
+                                    }
+                                    else {
+                                        m_FieldMap[pos].EntityField.SetValue(this, reader.ReadElementContentAs(m_FieldMap[pos].EntityField.FieldType.GetGenericArguments()[0], null));
+                                    }
+                                }
+                                else {
+                                    m_FieldMap[pos].EntityField.SetValue(this, reader.ReadElementContentAs(m_FieldMap[pos].EntityField.FieldType, null));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            r.Read();
+        }
+
+        public void WriteXml(System.Xml.XmlWriter writer) {
+
+            Array.ForEach(
+                Fields,
+                delegate(EntityDbField item) {
+                    writer.WriteStartElement(XmlConvert.EncodeLocalName(item.DbName));
+                    writer.WriteAttributeString("length", item.DbLength.ToString());
+                    writer.WriteAttributeString("dbType", item.DbType.ToString());
+                    object val = GetValueForDbField(item);
+                    if(null != val) {
+                        try {
+                            writer.WriteValue(GetValueForDbField(item));
+                        }
+                        catch {
+                            writer.WriteString(
+                                typeof(XmlConvert).InvokeMember(
+                                    "ToString",
+                                    BindingFlags.Static | BindingFlags.Public | BindingFlags.InvokeMethod,
+                                    null,
+                                    null,
+                                    new Object[] {GetValueForDbField(item)}).ToString());
+                        }
+                    }
+                    writer.WriteEndElement();
+                });
         }
     }
 }
