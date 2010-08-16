@@ -30,9 +30,16 @@ namespace mnDAL
 
         public Join AddSubJoin(Join subJoin)
         {
-            m_SubJoin = subJoin;
-            m_SubJoin.m_JoinID = m_JoinID + 1;
-            return m_SubJoin;
+            if(null == m_SubJoin)
+            {
+                m_SubJoin = subJoin;
+                m_SubJoin.m_JoinID = m_JoinID + 1;
+            }
+            else
+            {
+                m_SubJoin.AddSubJoin(subJoin);
+            }
+            return this;
         }
 
         public Join SubJoin
@@ -53,7 +60,7 @@ namespace mnDAL
             while (null != currentJoin)
             {
 
-                switch (m_JoinType)
+                switch (currentJoin.m_JoinType)
                 {
                     case JoinType.Inner:
                         sb.Append(" INNER JOIN ");
@@ -66,17 +73,17 @@ namespace mnDAL
                         break;
                 }
 
-                sb.Append(m_FieldB.EntityType);
+                sb.Append(currentJoin.m_FieldB.EntityType);
                 sb.Append(" ON ");
-                sb.Append(m_FieldA.EntityType.EntityName);
+                sb.Append(currentJoin.m_FieldA.EntityType.EntityName);
                 sb.Append(".");
-                sb.Append(m_FieldA.DbName);
+                sb.Append(currentJoin.m_FieldA.DbName);
                 sb.Append(" = ");
-                sb.Append(m_FieldB.EntityType.EntityName);
+                sb.Append(currentJoin.m_FieldB.EntityType.EntityName);
                 sb.Append(".");
-                sb.Append(m_FieldB.DbName);
+                sb.Append(currentJoin.m_FieldB.DbName);
 
-                currentJoin = SubJoin;
+                currentJoin = currentJoin.SubJoin;
             }
             return sb.ToString();
         }

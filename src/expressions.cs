@@ -299,15 +299,15 @@ namespace mnDAL
             }
         }
 
-        public static CombinedExpression operator &(CombinedExpression lhs, Expression rhs)
-        {
-            return new CombinedExpression(lhs, " AND ", rhs);
-        }
+        //public static CombinedExpression operator &(CombinedExpression lhs, Expression rhs)
+        //{
+        //    return new CombinedExpression(lhs, " AND ", rhs);
+        //}
 
-        public static CombinedExpression operator |(CombinedExpression lhs, Expression rhs)
-        {
-            return new CombinedExpression(lhs, " OR ", rhs);
-        }
+        //public static CombinedExpression operator |(CombinedExpression lhs, Expression rhs)
+        //{
+        //    return new CombinedExpression(lhs, " OR ", rhs);
+        //}
 
         public static CombinedExpression operator &(Expression lhs, CombinedExpression rhs)
         {
