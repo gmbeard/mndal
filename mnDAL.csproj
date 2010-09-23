@@ -50,7 +50,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.framework, Version=2.5.5.10112, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL" />
+    <Reference Include="nunit.framework, Version=2.5.5.10112, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL" Condition="'$(Configuration)' == 'Unit Testing'" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -64,20 +64,21 @@
     <Compile Include="src\entitytype.cs" />
     <Compile Include="src\expressions.cs" />
     <Compile Include="src\Join.cs" />
-    <Compile Include="tests\database tests.cs" />
-    <Compile Include="tests\entity classes\AnimalEntity.cs" />
-    <Compile Include="tests\entity classes\CheeseEntity.cs" />
-    <Compile Include="tests\entity classes\CountryEntity.cs" />
+    <Compile Include="tests\database tests.cs" Condition="'$(Configuration)' == 'Unit Testing'" />
+    <Compile Include="tests\entity classes\AnimalEntity.cs" Condition="'$(Configuration)' == 'Unit Testing'" />
+    <Compile Include="tests\entity classes\CheeseEntity.cs" Condition="'$(Configuration)' == 'Unit Testing'" />
+    <Compile Include="tests\entity classes\CountryEntity.cs" Condition="'$(Configuration)' == 'Unit Testing'" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="db\mnDAL.mdf">
+    <Content Include="db\mnDAL.mdf" Condition="'$(Configuration)' == 'Unit Testing'">
     </Content>
-    <Content Include="db\mnDAL_log.ldf">
+    <Content Include="db\mnDAL_log.ldf" Condition="'$(Configuration)' == 'Unit Testing'">
       <DependentUpon>mnDAL.mdf</DependentUpon>
     </Content>
-    <Content Include="lib\nunit.framework.dll" />
+    <Content Include="lib\nunit.framework.dll" Condition="'$(Configuration)' == 'Unit Testing'" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="App.config" />
     <None Include="mnDAL.snk" />
   </ItemGroup>
   <!--<ItemGroup>
@@ -119,6 +120,6 @@
   </ItemGroup>-->
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="AfterBuild">
-    <Touch Files="db\mnDAL.mdf" ForceTouch="True" />
+    <Touch Files="db\mnDAL.mdf" ForceTouch="True" Condition="'$(Configuration)' == 'Unit Testing'" />
   </Target>
 </Project>
