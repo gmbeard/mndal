@@ -7,15 +7,14 @@ using System.Xml.Serialization;
 using System.Xml;
 using System.IO;
 
-namespace mnDAL
-{
+namespace mnDAL {
     [Serializable]
-    public class EntityFieldMapping : 
-        IComparable<EntityDbField>, 
+    public class EntityFieldMapping :
+        IComparable<EntityDbField>,
         IComparable<EntityFieldMapping> {
 
-        private EntityDbField   m_DbField;
-        private FieldInfo       m_EntityField;
+        private EntityDbField m_DbField;
+        private FieldInfo m_EntityField;
 
         internal EntityFieldMapping(EntityDbField dbField) {
             m_DbField = dbField;
@@ -24,7 +23,7 @@ namespace mnDAL
         public EntityFieldMapping(EntityDbField dbField, string entityField, Type entityType) {
             m_DbField = dbField;
             m_EntityField = entityType.GetField(entityField, BindingFlags.Instance | BindingFlags.NonPublic);
-            if(null == m_EntityField) {
+            if (null == m_EntityField) {
                 throw new FieldAccessException("Couldn't find '" + entityField + "'");
             }
         }
@@ -53,61 +52,57 @@ namespace mnDAL
     [Serializable]
     public abstract class EntityBase : IXmlSerializable {
 
-        private List<EntityFieldMapping>    m_FieldMap;
-        private List<EntityDbField>         m_ModifiedFields;
+        private List<EntityFieldMapping> m_FieldMap;
+        private List<EntityDbField> m_ModifiedFields;
         private EntityType m_DbType;
 
-        public EntityBase(string entityName)
-        {
+        public EntityBase(string entityName) {
             m_DbType = new EntityType(entityName);
             m_FieldMap = new List<EntityFieldMapping>();
             m_ModifiedFields = new List<EntityDbField>();
         }
 
-        protected void AddFieldMapping(EntityFieldMapping mapping) 
-        {
-            if(null == m_FieldMap) {
+        protected void AddFieldMapping(EntityFieldMapping mapping) {
+            if (null == m_FieldMap) {
                 throw new ArgumentNullException("EntityFieldMapping");
             }
 
             int pos = m_FieldMap.BinarySearch(mapping);
-            if(pos < 0) {
+            if (pos < 0) {
                 pos = ~pos;
             }
 
             m_FieldMap.Insert(pos, mapping);
         }
 
-        protected void AddFieldMapping(EntityDbField dbfield, string objfield, Type objtype)
-        {
+        protected void AddFieldMapping(EntityDbField dbfield, string objfield, Type objtype) {
             AddFieldMapping(new EntityFieldMapping(dbfield, objfield, objtype));
         }
 
-        protected void AddFieldMapping(EntityDbField dbfield, string objfield)
-        {
+        protected void AddFieldMapping(EntityDbField dbfield, string objfield) {
             AddFieldMapping(new EntityFieldMapping(dbfield, objfield, this.GetType()));
         }
 
         protected void SetFieldModified(EntityDbField field, bool modified) {
             int pos = m_ModifiedFields.BinarySearch(field);
 
-            if(modified) {
-                if(pos < 0) {
+            if (modified) {
+                if (pos < 0) {
                     pos = ~pos;
                     m_ModifiedFields.Insert(pos, field);
                 }
             }
             else {
-                if(pos >= 0) {
+                if (pos >= 0) {
                     m_ModifiedFields.RemoveAt(pos);
                 }
             }
         }
 
         public EntityDbField[] Fields {
-            get{ 
+            get {
                 EntityDbField[] flds = new EntityDbField[m_FieldMap.Count];
-                for(int i = 0; i < m_FieldMap.Count; ++i) {
+                for (int i = 0; i < m_FieldMap.Count; ++i) {
                     flds[i] = m_FieldMap[i].DbField;
                 }
 
@@ -116,7 +111,7 @@ namespace mnDAL
         }
 
         protected List<EntityFieldMapping> FieldMappings {
-            get{ return m_FieldMap; }
+            get { return m_FieldMap; }
         }
 
         public virtual bool Updatable {
@@ -141,7 +136,7 @@ namespace mnDAL
             return (m_ModifiedFields.BinarySearch(field) >= 0);
         }
 
-        public abstract EntityDbField GetIdentifierDbField();
+        public abstract EntityDbField[] GetIdentifierDbFields();
 
         public virtual EntityType GetDbType() {
             return m_DbType;
@@ -152,12 +147,12 @@ namespace mnDAL
         }
 
         public void ReadXml(System.Xml.XmlReader r) {
-            
-            using(XmlReader reader = r.ReadSubtree()) {
 
-                if(reader.Read()) {
-                    while(reader.Read()) {
-                        if(reader.NodeType == System.Xml.XmlNodeType.Element && !reader.IsEmptyElement) {
+            using (XmlReader reader = r.ReadSubtree()) {
+
+                if (reader.Read()) {
+                    while (reader.Read()) {
+                        if (reader.NodeType == System.Xml.XmlNodeType.Element && !reader.IsEmptyElement) {
                             EntityDbField field = new EntityDbField(
                                 XmlConvert.EncodeLocalName(reader.LocalName),
                                 (SqlDbType)Enum.Parse(typeof(SqlDbType), reader["dbType"]),
@@ -165,12 +160,12 @@ namespace mnDAL
                                 GetDbType());
 
                             int pos;
-                            if( (pos = m_FieldMap.BinarySearch(new EntityFieldMapping(field))) >= 0 ) {
-                                if(m_FieldMap[pos].EntityField.FieldType == typeof(Byte[])) {
-                                    using(MemoryStream ms = new MemoryStream()) {
+                            if ((pos = m_FieldMap.BinarySearch(new EntityFieldMapping(field))) >= 0) {
+                                if (m_FieldMap[pos].EntityField.FieldType == typeof(Byte[])) {
+                                    using (MemoryStream ms = new MemoryStream()) {
                                         Byte[] buffer = new Byte[1024];
                                         int read = 0;
-                                        while( (read = reader.ReadElementContentAsBase64(buffer, 0, 1024)) > 0) {
+                                        while ((read = reader.ReadElementContentAsBase64(buffer, 0, 1024)) > 0) {
                                             ms.Write(buffer, 0, read);
                                         }
 
@@ -178,8 +173,8 @@ namespace mnDAL
                                         ms.Close();
                                     }
                                 }
-                                else if(m_FieldMap[pos].EntityField.FieldType.IsGenericType && m_FieldMap[pos].EntityField.FieldType.GetGenericTypeDefinition() == typeof(Nullable<>)) {
-                                    if(m_FieldMap[pos].EntityField.FieldType.GetGenericArguments()[0] == typeof(Guid)) {
+                                else if (m_FieldMap[pos].EntityField.FieldType.IsGenericType && m_FieldMap[pos].EntityField.FieldType.GetGenericTypeDefinition() == typeof(Nullable<>)) {
+                                    if (m_FieldMap[pos].EntityField.FieldType.GetGenericArguments()[0] == typeof(Guid)) {
                                         m_FieldMap[pos].EntityField.SetValue(this, new Guid(reader.ReadElementContentAsString()));
                                     }
                                     else {
@@ -207,7 +202,7 @@ namespace mnDAL
                     writer.WriteAttributeString("length", item.DbLength.ToString());
                     writer.WriteAttributeString("dbType", item.DbType.ToString());
                     object val = GetValueForDbField(item);
-                    if(null != val) {
+                    if (null != val) {
                         try {
                             writer.WriteValue(GetValueForDbField(item));
                         }
@@ -218,7 +213,7 @@ namespace mnDAL
                                     BindingFlags.Static | BindingFlags.Public | BindingFlags.InvokeMethod,
                                     null,
                                     null,
-                                    new Object[] {GetValueForDbField(item)}).ToString());
+                                    new Object[] { GetValueForDbField(item) }).ToString());
                         }
                     }
                     writer.WriteEndElement();
