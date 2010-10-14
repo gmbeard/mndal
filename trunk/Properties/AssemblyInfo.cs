@@ -7,5 +7,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("mnDAL")]
 [assembly: ComVisible(false)]
 [assembly: Guid("676b1c22-89a3-4b35-b055-7bfd876a870c")]
-[assembly: AssemblyVersion("0.6.*")]
+[assembly: AssemblyVersion("0.7.*")]
 

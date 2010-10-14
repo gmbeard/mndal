@@ -2,18 +2,14 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace mnDAL
-{
+namespace mnDAL {
     [Serializable]
-    public class EntityType
-    {
+    public class EntityType {
         private readonly string m_EntityName;
         private readonly string m_Database;
 
-        public EntityType(string entityName)
-        {
-            if (String.IsNullOrEmpty(entityName))
-            {
+        public EntityType(string entityName) {
+            if (String.IsNullOrEmpty(entityName)) {
                 throw new ArgumentException("entityName can't be null or empty", "entityName");
             }
 
@@ -21,15 +17,12 @@ namespace mnDAL
             m_Database = String.Empty;
         }
 
-        public EntityType(string entityName, string database)
-        {
-            if (String.IsNullOrEmpty(entityName))
-            {
+        public EntityType(string entityName, string database) {
+            if (String.IsNullOrEmpty(entityName)) {
                 throw new ArgumentException("entityName can't be null or empty", "entityName");
             }
 
-            if (String.IsNullOrEmpty(database))
-            {
+            if (String.IsNullOrEmpty(database)) {
                 throw new ArgumentException("database can't be null or empty", "database");
             }
 
@@ -37,30 +30,24 @@ namespace mnDAL
             m_Database = database;
         }
 
-        public string EntityName
-        {
+        public string EntityName {
             get { return m_EntityName; }
         }
 
-        public string Database
-        {
+        public string Database {
             get { return m_Database; }
         }
 
-        public override string ToString()
-        {
-            if (!String.IsNullOrEmpty(Database))
-            {
+        public override string ToString() {
+            if (!String.IsNullOrEmpty(Database)) {
                 return String.Concat(Database, ".", EntityName);
             }
-            else
-            {
+            else {
                 return EntityName;
             }
         }
 
-        public static implicit operator string(EntityType rhs)
-        {
+        public static implicit operator string(EntityType rhs) {
             return rhs.ToString();
         }
     }
