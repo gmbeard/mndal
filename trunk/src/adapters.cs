@@ -1,3 +1,22 @@
+/*
+ *	Copyright 2010 Greg Beard
+ *
+ *	This file is part of mnDAL (http://code.google.com/p/mndal)
+ *
+ *	mnDAL is free software: you can redistribute it and/or modify
+ *	it under the terms of the Lesser GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	mnDAL is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	Lesser GNU General Public License for more details.
+ *
+ *	You should have received a copy of the Lesser GNU General Public License
+ *	along with mnDAL.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -15,13 +34,23 @@ namespace mnDAL.Database {
         private readonly SortExpression m_Sort;
         private readonly int m_Top;
         private Join m_Join;
+        private bool m_DistinctRows = false;
 
         public EntityFetcher() {
             m_Top = 0;
         }
 
+        public EntityFetcher(bool distinct) {
+            m_DistinctRows = distinct;
+        }
+
         public EntityFetcher(int max) {
             m_Top = max;
+        }
+
+        public EntityFetcher(int max, bool distinct) {
+            m_Top = max;
+            m_DistinctRows = distinct;
         }
 
         public EntityFetcher(SortExpression sort) {
@@ -33,6 +62,16 @@ namespace mnDAL.Database {
             m_Top = 0;
         }
 
+        public EntityFetcher(SortExpression sort, bool distinct) {
+            if (null == sort) {
+                throw new ArgumentNullException("SortExpression");
+            }
+
+            m_Sort = sort;
+            m_Top = 0;
+            m_DistinctRows = distinct;
+        }
+
         public EntityFetcher(SortExpression sort, int max) {
             if (null == sort) {
                 throw new ArgumentNullException("SortExpression");
@@ -40,6 +79,16 @@ namespace mnDAL.Database {
 
             m_Sort = sort;
             m_Top = max;
+        }
+
+        public EntityFetcher(SortExpression sort, int max, bool distinct) {
+            if (null == sort) {
+                throw new ArgumentNullException("SortExpression");
+            }
+
+            m_Sort = sort;
+            m_Top = max;
+            m_DistinctRows = distinct;
         }
 
         public EntityFetcher(Expression expr, int max) {
@@ -51,6 +100,16 @@ namespace mnDAL.Database {
             m_Top = max;
         }
 
+        public EntityFetcher(Expression expr, int max, bool distinct) {
+            if (null == expr) {
+                throw new ArgumentNullException("Expression");
+            }
+
+            m_Expr = expr;
+            m_Top = max;
+            m_DistinctRows = distinct;
+        }
+
         public EntityFetcher(Expression expr) {
             if (null == expr) {
                 throw new ArgumentNullException("Expression");
@@ -58,6 +117,16 @@ namespace mnDAL.Database {
 
             m_Expr = expr;
             m_Top = 0;
+        }
+
+        public EntityFetcher(Expression expr, bool distinct) {
+            if (null == expr) {
+                throw new ArgumentNullException("Expression");
+            }
+
+            m_Expr = expr;
+            m_Top = 0;
+            m_DistinctRows = distinct;
         }
 
         public EntityFetcher(Expression expr, SortExpression sort) {
@@ -74,6 +143,21 @@ namespace mnDAL.Database {
             m_Top = 0;
         }
 
+        public EntityFetcher(Expression expr, SortExpression sort, bool distinct) {
+            if (null == expr) {
+                throw new ArgumentNullException("Expression");
+            }
+
+            if (null == sort) {
+                throw new ArgumentNullException("SortExpression");
+            }
+
+            m_Expr = expr;
+            m_Sort = sort;
+            m_Top = 0;
+            m_DistinctRows = distinct;
+        }
+
         public EntityFetcher(Expression expr, SortExpression sort, int max) {
             if (null == expr) {
                 throw new ArgumentNullException("Expression");
@@ -86,6 +170,21 @@ namespace mnDAL.Database {
             m_Expr = expr;
             m_Sort = sort;
             m_Top = max;
+        }
+
+        public EntityFetcher(Expression expr, SortExpression sort, int max, bool distinct) {
+            if (null == expr) {
+                throw new ArgumentNullException("Expression");
+            }
+
+            if (null == sort) {
+                throw new ArgumentNullException("SortExpression");
+            }
+
+            m_Expr = expr;
+            m_Sort = sort;
+            m_Top = max;
+            m_DistinctRows = distinct;
         }
 
         public EntityFetcher<T> AddJoinPath(Join join) {
@@ -104,6 +203,11 @@ namespace mnDAL.Database {
 
         public EntityFetcher<T> AddJoinPath(EntityDbField fieldA, EntityDbField fieldB) {
             return AddJoinPath(new Join(fieldA, fieldB, JoinType.Inner));
+        }
+
+        public bool DistinctRows {
+            get { return m_DistinctRows; }
+            set { m_DistinctRows = value; }
         }
 
         internal SqlCommand GetSelectCommand() {
@@ -157,19 +261,21 @@ namespace mnDAL.Database {
             //  work on non-comparable types (text, ntext, image, etc).
             //  FIX: We could have the GROUP BY as an option, set by the client.
             //
-            //qry.Append(" GROUP BY ");
-            //int j = 0;
-            //Array.ForEach(
-            //    fields,
-            //    delegate(EntityDbField fld) {
-            //        if(j++ > 0) {
-            //            qry.Append(", ");
-            //        }
-            //        qry.Append(fld.EntityType.EntityName);
-            //        qry.Append(".");
-            //        qry.Append(fld.DbName);
-            //    }
-            //);
+            if(DistinctRows) {
+                qry.Append(" GROUP BY ");
+                int j = 0;
+                Array.ForEach(
+                    fields,
+                    delegate(EntityDbField fld) {
+                        if(j++ > 0) {
+                            qry.Append(", ");
+                        }
+                        qry.Append(fld.EntityType.EntityName);
+                        qry.Append(".");
+                        qry.Append(fld.DbName);
+                    }
+                );
+            }
 
             if (null != m_Sort) {
                 qry.Append(" ");
@@ -506,6 +612,8 @@ namespace mnDAL.Database {
         SqlConnection Connection { get; set;}
         object FetchEntities(object filter);
         void CommitEntity(ref object entity, UpdateAction action, Type entityType);
+        DynamicEntity[] Execute(String procName, Object[,] inputParameters);
+        DynamicEntity[] Execute(String procName, Object[,] inputParameters, ref Object[,] outputParameters);
     }
 
     public class DatabaseAdapter : IDatabaseAdapter {
@@ -686,7 +794,22 @@ namespace mnDAL.Database {
             entity = update.Entity;
         }
 
-        public DynamicEntity[] Execute(String procName, Object[] paramValues) {
+        public DynamicEntity[] Execute(String procName, Object[,] paramValues) {
+            Object[,] output = null;
+            return Execute(procName, paramValues, ref output);
+        }
+
+        /// <summary>
+        /// This method executes stored procedures.
+        /// </summary>
+        /// <param name="procName">Procedure name</param>
+        /// <param name="paramValues">Multi-dimensional array that describes the input parameters. 
+        /// Each parameter must have at least a parameter name (String) and a value (Object) in its second dimension. 
+        /// You can also specify "true" for an output parameter but this is not required for input parameters</param>
+        /// <param name="outputParameters">This multi-dimensional array will contain the output parameters, in the format
+        /// { "@Name" (String), value (Object) }. This array will also contain a return value if present, with the "@@Return" name</param>
+        /// <returns>Returns any resulting rows as an array of DynamicEntity objects</returns>
+        public DynamicEntity[] Execute(String procName, Object[,] paramValues, ref Object[,] outputParameters) {
 
             List<DynamicEntity> results = new List<DynamicEntity>();
 
@@ -698,16 +821,32 @@ namespace mnDAL.Database {
                     m_Connection.Open();
                 }
 
-                cmd.Prepare();
+                List<SqlParameter> output = new List<SqlParameter>();
 
                 if (null != paramValues) {
-                    Array.ForEach(
-                        paramValues,
-                        delegate(Object item) {
-                            SqlParameter param = new SqlParameter();
-                            param.Value = item == null ? DBNull.Value : item;
+                    for(int i = 0; i < paramValues.GetLength(0); ++i) {
+                        if(null != paramValues[i, 0]) {
+                            String name = paramValues[i, 0].ToString();
+                            
+                            SqlParameter param = new SqlParameter(
+                                    name.StartsWith("@") ? name : "@" + name,
+                                    paramValues[i, 1]
+                            );
+
+                            if(paramValues.GetLength(1) > 2 && (paramValues[i, 2] as Boolean?) != null ) {
+                                param.Direction = (bool)paramValues[i, 2] ? ParameterDirection.Output : ParameterDirection.Input;
+                            }
+                            else {
+                                param.Direction = ParameterDirection.Input;
+                            }
+
+                            if(param.Direction == ParameterDirection.Output) {
+                                output.Add(param);
+                            }
+
                             cmd.Parameters.Add(param);
-                        });
+                        }
+                    }
                 }
 
                 using (SqlDataReader reader = cmd.ExecuteReader(m_OwnsConnection ? CommandBehavior.CloseConnection : CommandBehavior.Default)) {
@@ -729,6 +868,13 @@ namespace mnDAL.Database {
                     }
 
                     reader.Close();
+                }
+
+                outputParameters = new Object[output.Count, 2];
+
+                for( int j = 0; j < output.Count; ++j) {
+                    outputParameters[j, 0] = output[j].ParameterName.Replace("@", "");
+                    outputParameters[j, 1] = output[j].Value;
                 }
             }
 
