@@ -625,7 +625,7 @@ namespace mnDAL.Database {
 
         public DatabaseAdapter() {
             m_Connection = new SqlConnection(
-                "Server=UNIVERSAL_DBS\\SQL_SERVER_2005;Database=CRM;Trusted_Connection=true");
+                "Server=;Database=;Trusted_Connection=true");
             m_OwnsConnection = true;
         }
 
