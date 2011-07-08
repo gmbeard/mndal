@@ -20,14 +20,28 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace mnDAL {
 
     [Serializable]
-    public sealed class DynamicEntity : EntityBase {
+    public sealed class DynamicEntity : EntityBase, ISerializable {
 
         private Object[] m_FieldValues;
         List<EntityDbField> m_Fields;
+
+        private DynamicEntity(SerializationInfo info, StreamingContext ctx)
+            : base("[__DynamicEntity__" + new Guid().ToString() + "]") {
+
+            m_FieldValues = (Object[])info.GetValue("m_FieldValues", typeof(Object[]));
+            m_Fields = (List<EntityDbField>)info.GetValue("m_Fields", typeof(List<EntityDbField>));
+
+            m_Fields.ForEach(
+                delegate(EntityDbField field) {
+                    AddFieldMapping(field, typeof(Object), FieldMappingAction);
+                }
+            );
+        }
 
         internal DynamicEntity(EntityDbField[] fields)
             : base("[__DynamicEntity__" + new Guid().ToString() + "]") {
@@ -45,11 +59,29 @@ namespace mnDAL {
                 }
                 else {
                     m_Fields.Insert(~pos, field);
-                    AddFieldMapping(field, "m_FieldValues");
+                    AddFieldMapping(field, typeof(Object), FieldMappingAction);
                 }
             }
 
             m_FieldValues = new Object[m_Fields.Count];
+        }
+
+        private void Init() {
+
+        }
+
+        private void FieldMappingAction(FieldMappingActionArgs args) {
+            int pos = m_Fields.BinarySearch(args.DbField);
+            if(pos >= 0) {
+                switch(args.CallReason) {
+                    case FieldMappingActionCallReason.Get:
+                        args.Value = m_FieldValues[pos];
+                        break;
+                    case FieldMappingActionCallReason.Set:
+                        m_FieldValues[pos] = args.Value;
+                        break;
+                }
+            }
         }
 
         public Object this[string fieldName] {
@@ -81,23 +113,17 @@ namespace mnDAL {
 
         public override EntityDbField[] GetIdentifierDbFields() {
             return new EntityDbField[] { };
-            //return m_Fields.Find(delegate(EntityDbField item) {
-            //    return item.IsAutoIncrement;
-            //});
-        }
-
-        public override object GetValueForDbField(EntityDbField field) {
-            return m_FieldValues[m_Fields.BinarySearch(field)];
-        }
-
-        public override void SetValueForDbField(EntityDbField field, object value) {
-            m_FieldValues[m_Fields.BinarySearch(field)] = value;
         }
 
         public override bool Updatable {
             get {
                 return false;
             }
+        }
+
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context) {
+            info.AddValue("m_FieldValues", m_FieldValues);
+            info.AddValue("m_Fields", m_Fields);
         }
     }
 }
