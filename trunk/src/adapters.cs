@@ -27,6 +27,12 @@ using System.Reflection;
 
 namespace mnDAL.Database {
 
+    public enum ExecuteCommandType {
+        StoredProcedure,
+        Text,
+        TableDirect
+    };
+
     [Serializable]
     public class EntityFetcher<T> where T : EntityBase, new() {
 
@@ -213,7 +219,7 @@ namespace mnDAL.Database {
         internal SqlCommand GetSelectCommand() {
 
             SqlCommand cmd = new SqlCommand();
-            cmd.CommandType = CommandType.Text;
+            cmd.CommandType = System.Data.CommandType.Text;
 
             T ent = new T();
             EntityDbField[] fields = ent.Fields;
@@ -248,11 +254,23 @@ namespace mnDAL.Database {
                 qry.Append(m_Expr);
 
                 foreach (Expression exp in m_Expr.Expressions) {
+                    
                     //  We must ignore adding parameters for expressions
                     //  comparing DBNull because the expression compiles
                     //  into 'IS [NOT] NULL'
                     if (exp.Value.GetType() != DBNull.Value.GetType()) {
-                        cmd.Parameters.Add("@" + exp.ExpressionID, exp.DbField.DbType, exp.DbField.DbLength).Value = exp.Value;
+                        if(exp.Value.GetType() == typeof(String)) {
+                            
+                            //  If the parameter type is char then the value will
+                            //  be padded up to the length of the field (this is
+                            //  non more apparent than when using 'LIKE' expressions), 
+                            //  so for the parameter size we need to take the 
+                            //  smallest of the value length and the field length.
+                            cmd.Parameters.Add("@" + exp.ExpressionID, exp.DbField.DbType, Math.Min(exp.DbField.DbLength, ((String)(exp.Value)).Length)).Value = exp.Value;
+                        }
+                        else {
+                            cmd.Parameters.Add("@" + exp.ExpressionID, exp.DbField.DbType, exp.DbField.DbLength).Value = exp.Value;
+                        }
                     }
                 }
             }
@@ -354,10 +372,14 @@ namespace mnDAL.Database {
             }
         }
 
+        public UpdateAction GetAction() {
+            return m_Action;
+        }
+
         internal SqlCommand GetUpdateCommand() {
 
             SqlCommand cmd = new SqlCommand();
-            cmd.CommandType = CommandType.Text;
+            cmd.CommandType = System.Data.CommandType.Text;
             List<EntityDbField> updatedFields = new List<EntityDbField>();
 
             foreach (EntityDbField field in Fields) {
@@ -426,6 +448,10 @@ namespace mnDAL.Database {
                         }
                         break;
                 }
+
+                if(param.Value == null) {
+                    param.Value = DBNull.Value;
+                }
             }
 
             foreach (Expression expr in exp.Expressions) {
@@ -440,7 +466,7 @@ namespace mnDAL.Database {
             SqlCommand cmd = new SqlCommand();
             StringBuilder cmdTxt = new StringBuilder();
 
-            cmd.CommandType = CommandType.Text;
+            cmd.CommandType = System.Data.CommandType.Text;
 
             // Build SQL
             cmdTxt.Append("INSERT INTO ");
@@ -449,34 +475,29 @@ namespace mnDAL.Database {
 
             //  Build SQL field list
             for (int i = 0; i < Fields.Length; ++i) {
-                if (Fields[i].IsAutoIncrement) {
-                    continue;
-                }
-                else {
-                    cmdTxt.Append(Fields[i].DbName);
-                    if (i < Fields.GetUpperBound(0)) {
+                if(!Fields[i].IsAutoIncrement) {
+                    if(i > 0) {
                         cmdTxt.Append(", ");
                     }
+                    cmdTxt.Append(Fields[i].DbName);
                 }
             }
+
             cmdTxt.Append(") ");
 
             cmdTxt.Append("VALUES (");
 
             // Build field->param list
             for (int i = 0; i < Fields.Length; ++i) {
-                if (Fields[i].IsAutoIncrement) {
-                    continue;
-                }
-                else {
-                    cmdTxt.Append("@expr");
-                    cmdTxt.Append(i.ToString());
-                    if (i < Fields.GetUpperBound(0)) {
+                if(!Fields[i].IsAutoIncrement) {
+                    if(i > 0) {
                         cmdTxt.Append(", ");
                     }
-
+                    cmdTxt.Append("@expr");
+                    cmdTxt.Append(i.ToString());
                 }
             }
+
             cmdTxt.Append(")");
 
             if (null != ((object)(AutoIncrementField))) {
@@ -492,6 +513,7 @@ namespace mnDAL.Database {
                 SqlParameter param = cmd.Parameters.Add("@expr" + i.ToString(), Fields[i].DbType, Fields[i].DbLength);
 
                 param.Value = Entity.GetValueForDbField(Fields[i]);
+
                 if (null == param.Value) {
                     param.Value = DBNull.Value;
                 }
@@ -552,7 +574,7 @@ namespace mnDAL.Database {
 
             SqlCommand cmd = new SqlCommand();
 
-            cmd.CommandType = CommandType.Text;
+            cmd.CommandType = System.Data.CommandType.Text;
 
             StringBuilder sql = new StringBuilder("DELETE FROM ");
             sql.Append(Entity.GetDbType());
@@ -612,8 +634,8 @@ namespace mnDAL.Database {
         SqlConnection Connection { get; set;}
         object FetchEntities(object filter);
         void CommitEntity(ref object entity, UpdateAction action, Type entityType);
-        DynamicEntity[] Execute(String procName, Object[,] inputParameters);
-        DynamicEntity[] Execute(String procName, Object[,] inputParameters, ref Object[,] outputParameters);
+        DynamicEntity[] Execute(String procName, ExecuteCommandType commandType, Object[,] inputParameters);
+        DynamicEntity[] Execute(String procName, ExecuteCommandType commandType, Object[,] inputParameters, ref Object[,] outputParameters);
     }
 
     public class DatabaseAdapter : IDatabaseAdapter {
@@ -624,8 +646,7 @@ namespace mnDAL.Database {
         private int m_Disposed = 0;
 
         public DatabaseAdapter() {
-            m_Connection = new SqlConnection(
-                "Server=;Database=;Trusted_Connection=true");
+            m_Connection = new SqlConnection();
             m_OwnsConnection = true;
         }
 
@@ -794,9 +815,9 @@ namespace mnDAL.Database {
             entity = update.Entity;
         }
 
-        public DynamicEntity[] Execute(String procName, Object[,] paramValues) {
+        public DynamicEntity[] Execute(String procName, ExecuteCommandType commandType, Object[,] paramValues) {
             Object[,] output = null;
-            return Execute(procName, paramValues, ref output);
+            return Execute(procName, commandType, paramValues, ref output);
         }
 
         /// <summary>
@@ -809,13 +830,13 @@ namespace mnDAL.Database {
         /// <param name="outputParameters">This multi-dimensional array will contain the output parameters, in the format
         /// { "@Name" (String), value (Object) }. This array will also contain a return value if present, with the "@@Return" name</param>
         /// <returns>Returns any resulting rows as an array of DynamicEntity objects</returns>
-        public DynamicEntity[] Execute(String procName, Object[,] paramValues, ref Object[,] outputParameters) {
+        public DynamicEntity[] Execute(String procName, ExecuteCommandType commandType, Object[,] paramValues, ref Object[,] outputParameters) {
 
             List<DynamicEntity> results = new List<DynamicEntity>();
 
             using (SqlCommand cmd = new SqlCommand(procName, m_Connection)) {
 
-                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandType = (System.Data.CommandType)Enum.Parse(typeof(System.Data.CommandType), Enum.GetName(typeof(ExecuteCommandType), commandType));
 
                 if (m_Connection.State == ConnectionState.Closed) {
                     m_Connection.Open();
@@ -833,11 +854,16 @@ namespace mnDAL.Database {
                                     paramValues[i, 1]
                             );
 
-                            if(paramValues.GetLength(1) > 2 && (paramValues[i, 2] as Boolean?) != null ) {
-                                param.Direction = (bool)paramValues[i, 2] ? ParameterDirection.Output : ParameterDirection.Input;
-                            }
-                            else {
-                                param.Direction = ParameterDirection.Input;
+                            param.Direction = ParameterDirection.Input;
+
+                            for(int j = 2; j < paramValues.GetLength(1); ++j) {
+                                if( (paramValues[i, j] as Boolean?) != null) {
+                                    param.Direction = (bool)paramValues[i, j] ? ParameterDirection.Output : ParameterDirection.Input;
+                                }
+                                else if( (paramValues[i, j] as Int32?) != null) {
+                                    param.Size = (int)paramValues[i, j];
+                                }
+
                             }
 
                             if(param.Direction == ParameterDirection.Output) {

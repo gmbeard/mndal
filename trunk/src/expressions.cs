@@ -79,13 +79,15 @@ namespace mnDAL {
         private readonly EntityDbField m_Field;
         private readonly ExpressionOperator m_Expr;
         private readonly object m_Value;
+        protected bool m_Negate;
 
         private string m_ExpressionID;
 
         protected Expression() {
+            m_Negate = false;
         }
 
-        public Expression(EntityDbField field, ExpressionOperator op, object value) {
+        public Expression(EntityDbField field, ExpressionOperator op, object value) : this() {
             m_Field = field;
             m_Expr = op;
             m_Value = value;
@@ -120,54 +122,72 @@ namespace mnDAL {
             return this | rhs;
         }
 
+        public static Expression operator !(Expression rhs) {
+            rhs.m_Negate = true;
+            return rhs;
+        }
+
+        public Expression Not(Expression rhs) {
+            rhs.m_Negate = true;
+            return rhs;
+        }
+
         public string ExpressionID {
             get { return m_ExpressionID; }
             internal set { m_ExpressionID = value; }
         }
 
         public virtual bool Eval(EntityBase entity) {
+
+            bool eval = false;
+
             if (m_Expr == ExpressionOperator.EqualTo) {
-                return entity.GetValueForDbField(m_Field).Equals(Value);
+                eval = entity.GetValueForDbField(m_Field).Equals(Value);
             }
             else if ((m_Expr & ExpressionOperator.GreaterThan) > 0) {
                 if ((m_Expr & ExpressionOperator.EqualTo) > 0) {
-                    return ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) >= 0;
+                    eval = ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) >= 0;
                 }
                 else {
-                    return ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) > 0;
+                    eval = ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) > 0;
                 }
             }
             else if ((m_Expr & ExpressionOperator.LessThan) > 0) {
                 if ((m_Expr & ExpressionOperator.EqualTo) > 0) {
-                    return ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) <= 0;
+                    eval = ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) <= 0;
                 }
                 else {
-                    return ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) < 0;
+                    eval = ((IComparable)(entity.GetValueForDbField(m_Field))).CompareTo(Value) < 0;
                 }
 
             }
             else if (m_Expr == ExpressionOperator.NotEqualTo) {
-                return !entity.GetValueForDbField(m_Field).Equals(Value);
+                eval = !entity.GetValueForDbField(m_Field).Equals(Value);
             }
             else if ((m_Expr & ExpressionOperator.Like) > 0) {
                 if ((Value.GetType() != typeof(String)) || (entity.GetValueForDbField(m_Field).GetType() != typeof(String))) {
-                    return false;
+                    eval = false;
                 }
                 else {
                     if ((m_Expr & ExpressionOperator.NotEqualTo) > 0) {
-                        return !((String)(entity.GetValueForDbField(m_Field))).StartsWith(Value.ToString());
+                        eval = !((String)(entity.GetValueForDbField(m_Field))).StartsWith(Value.ToString());
                     }
                     else {
-                        return ((String)(entity.GetValueForDbField(m_Field))).StartsWith(Value.ToString());
+                        eval = ((String)(entity.GetValueForDbField(m_Field))).StartsWith(Value.ToString());
                     }
                 }
             }
 
-            return false;
+            return eval == !m_Negate;
         }
 
         public override string ToString() {
             StringBuilder expr = new StringBuilder();
+
+            if(m_Negate) {
+                expr.Append("NOT (");
+            }
+
             expr.Append(m_Field.EntityType.EntityName);
             expr.Append(".");
             expr.Append(m_Field.DbName);
@@ -208,6 +228,10 @@ namespace mnDAL {
                     expr.Append(" + '%'");
                 }
             }
+            if(m_Negate) {
+                expr.Append(")");
+            }
+
             expr.Append(" ");
 
             return expr.ToString();
@@ -285,6 +309,9 @@ namespace mnDAL {
 
         public override string ToString() {
             StringBuilder sb = new StringBuilder();
+            if(m_Negate) {
+                sb.Append("NOT ");
+            }
             sb.Append("( ");
             sb.Append(m_LHS);
             sb.Append(m_Combine);
